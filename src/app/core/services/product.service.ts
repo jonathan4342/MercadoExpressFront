@@ -21,6 +21,10 @@ export class ProductService {
     return this.http.post<Product>(this.base, product);
   }
 
+  update(id: string, product: CreateProductPayload): Observable<Product> {
+    return this.http.put<Product>(`${this.base}/${id}`, product);
+  }
+
   adjustStock(productId: string, type: MovementType, quantity: number, reason: string) {
     return this.http.post<{ product: Product }>(
       `${this.base}/${productId}/adjustments`, { type, quantity, reason }

@@ -1,19 +1,27 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { forkJoin } from 'rxjs';
-import { CatalogItem } from '../../core/models/models';
+import { CatalogItem, CreateProductPayload, Product } from '../../core/models/models';
 import { CatalogService } from '../../core/services/catalog.service';
 import { ProductService } from '../../core/services/product.service';
 
+/** Datos que recibe el diálogo: producto a editar (opcional) y descripciones existentes. */
+export interface ProductFormData {
+  product?: Product;
+  existingNames?: string[];
+}
+
 /**
- * RF-01: registro de productos. El SKU lo genera la base de datos.
+ * RF-01: registro y edición de productos. El SKU lo genera la base de datos.
  * Los selects se cargan desde /categories y /suppliers y envían IDs.
+ * No se permiten productos con descripción (nombre) duplicada — se valida en el
+ * cliente (contra la lista cargada) y en el backend (autoridad final).
  */
 @Component({
   selector: 'app-product-form-dialog',
@@ -21,13 +29,17 @@ import { ProductService } from '../../core/services/product.service';
   imports: [ReactiveFormsModule, MatDialogModule, MatFormFieldModule,
             MatInputModule, MatSelectModule, MatButtonModule],
   template: `
-    <h2 mat-dialog-title>Nuevo producto</h2>
+    <h2 mat-dialog-title>{{ isEdit ? 'Editar producto' : 'Nuevo producto' }}</h2>
     <form [formGroup]="form" (ngSubmit)="save()">
       <mat-dialog-content class="grid">
         <mat-form-field appearance="outline" class="full">
-          <mat-label>Nombre</mat-label>
+          <mat-label>Descripción</mat-label>
           <input matInput formControlName="name" />
-          <mat-error>Entre 3 y 100 caracteres</mat-error>
+          @if (form.controls.name.hasError('duplicate')) {
+            <mat-error>Ya existe un producto con esa descripción</mat-error>
+          } @else {
+            <mat-error>Entre 3 y 100 caracteres</mat-error>
+          }
         </mat-form-field>
 
         <mat-form-field appearance="outline">
@@ -59,6 +71,7 @@ import { ProductService } from '../../core/services/product.service';
         <mat-form-field appearance="outline">
           <mat-label>Stock inicial</mat-label>
           <input matInput type="number" formControlName="currentStock" min="0" />
+          @if (isEdit) { <mat-hint>El stock se ajusta desde inventario</mat-hint> }
         </mat-form-field>
 
         <mat-form-field appearance="outline">
@@ -85,9 +98,18 @@ export class ProductFormDialogComponent implements OnInit {
   private readonly catalogService = inject(CatalogService);
   private readonly dialogRef = inject(MatDialogRef<ProductFormDialogComponent>);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly data = inject<ProductFormData>(MAT_DIALOG_DATA, { optional: true }) ?? {};
 
   readonly categories = signal<CatalogItem[]>([]);
   readonly suppliers = signal<CatalogItem[]>([]);
+
+  readonly isEdit = !!this.data.product;
+  /** Descripciones existentes (en minúsculas) para el chequeo de duplicados, excluida la propia. */
+  private readonly takenNames = new Set(
+    (this.data.existingNames ?? [])
+      .map((n) => n.trim().toLowerCase())
+      .filter((n) => n !== this.data.product?.name.trim().toLowerCase())
+  );
 
   readonly form = this.fb.nonNullable.group({
     name: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(100)]],
@@ -106,21 +128,49 @@ export class ProductFormDialogComponent implements OnInit {
       this.categories.set(categories);
       this.suppliers.set(suppliers);
     });
+
+    const p = this.data.product;
+    if (p) {
+      this.form.patchValue({
+        name: p.name, categoryId: p.categoryId, supplierId: p.supplierId,
+        price: p.price, currentStock: p.currentStock, minimumStock: p.minimumStock
+      });
+      this.form.controls.currentStock.disable(); // el stock se gestiona por ajustes (RF-02)
+    }
+
+    // Marca la descripción como duplicada en vivo.
+    this.form.controls.name.valueChanges.subscribe((value) => {
+      const exists = this.takenNames.has((value ?? '').trim().toLowerCase());
+      const ctrl = this.form.controls.name;
+      const errors = { ...(ctrl.errors ?? {}) };
+      if (exists) errors['duplicate'] = true; else delete errors['duplicate'];
+      ctrl.setErrors(Object.keys(errors).length ? errors : null);
+    });
   }
 
   save(): void {
     if (this.form.invalid) return;
     const v = this.form.getRawValue();
-    this.productService.create({
+    const payload: CreateProductPayload = {
       name: v.name,
       categoryId: v.categoryId!,
       supplierId: v.supplierId!,
       price: v.price!,
       currentStock: v.currentStock,
       minimumStock: v.minimumStock!
-    }).subscribe({
-      next: () => { this.snackBar.open('Producto creado', 'OK', { duration: 3000 }); this.dialogRef.close(true); },
-      error: (err) => this.snackBar.open(err.error?.message ?? 'Error al crear el producto', 'OK')
+    };
+
+    const request$ = this.isEdit
+      ? this.productService.update(this.data.product!.id, payload)
+      : this.productService.create(payload);
+
+    request$.subscribe({
+      next: () => {
+        this.snackBar.open(this.isEdit ? 'Producto actualizado' : 'Producto creado', 'OK', { duration: 3000 });
+        this.dialogRef.close(true);
+      },
+      error: (err) => this.snackBar.open(
+        err.error?.message ?? `Error al ${this.isEdit ? 'actualizar' : 'crear'} el producto`, 'OK')
     });
   }
 }

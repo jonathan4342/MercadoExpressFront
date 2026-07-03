@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
@@ -9,34 +10,52 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Product } from '../../core/models/models';
-import { AlertService } from '../../core/services/alert.service';
-import { OrderService } from '../../core/services/order.service';
 import { ProductService } from '../../core/services/product.service';
-import { ProductFormDialogComponent } from './product-form-dialog.component';
-import { StockAdjustDialogComponent } from './stock-adjust-dialog.component';
+import { ProductFormDialogComponent, ProductFormData } from './product-form-dialog.component';
 
-/** Inventario: solo filtros + tabla (las estadísticas viven en el Dashboard). */
+/** Inventario: filtros (producto, categoría, proveedor) + tabla con edición. */
 @Component({
   selector: 'app-inventory-page',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, MatCardModule, MatTableModule, MatChipsModule,
             MatButtonModule, MatIconModule, MatFormFieldModule, MatInputModule, MatSelectModule,
-            MatDialogModule, MatSnackBarModule, MatTooltipModule],
+            MatAutocompleteModule, MatDialogModule, MatSnackBarModule, MatTooltipModule],
   template: `
     <div class="header">
       <h1>Inventario</h1>
-      <button mat-flat-button color="primary" (click)="openProductDialog()">
+      <button mat-flat-button color="primary" (click)="openCreateDialog()">
         <mat-icon>add</mat-icon> Nuevo producto
       </button>
     </div>
 
-    <!-- Filtros (RF-06) -->
+    <!-- Filtros (RF-06): Producto, Categoría, Proveedor -->
     <mat-card class="filters">
       <form [formGroup]="filterForm" class="filter-row">
+        <mat-form-field appearance="outline" class="wide">
+          <mat-label>Producto (SKU o descripción)</mat-label>
+          <input matInput [matAutocomplete]="auto"
+                 [value]="productQuery()"
+                 (input)="productQuery.set($any($event.target).value)"
+                 placeholder="Escribe un SKU o una descripción" />
+          <mat-autocomplete #auto="matAutocomplete">
+            @for (p of filtered(); track p.id) {
+              <mat-option [value]="p.sku + ' - ' + p.name"
+                          (onSelectionChange)="productQuery.set(p.sku + ' - ' + p.name)">
+                <code>{{ p.sku }}</code> — {{ p.name }}
+              </mat-option>
+            }
+          </mat-autocomplete>
+          @if (productQuery()) {
+            <button matSuffix mat-icon-button type="button" (click)="productQuery.set('')">
+              <mat-icon>close</mat-icon>
+            </button>
+          }
+        </mat-form-field>
+
         <mat-form-field appearance="outline">
           <mat-label>Categoría</mat-label>
           <mat-select formControlName="category">
@@ -53,24 +72,6 @@ import { StockAdjustDialogComponent } from './stock-adjust-dialog.component';
           </mat-select>
         </mat-form-field>
 
-        <mat-form-field appearance="outline" class="short">
-          <mat-label>Stock desde</mat-label>
-          <input matInput type="number" formControlName="minStock" min="0" />
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" class="short">
-          <mat-label>Stock hasta</mat-label>
-          <input matInput type="number" formControlName="maxStock" min="0" />
-        </mat-form-field>
-
-        <mat-form-field appearance="outline">
-          <mat-label>Alerta</mat-label>
-          <mat-select formControlName="activeAlert">
-            <mat-option [value]="false">Todos</mat-option>
-            <mat-option [value]="true">Solo con alerta activa</mat-option>
-          </mat-select>
-        </mat-form-field>
-
         <button mat-stroked-button type="button" (click)="load()">
           <mat-icon>filter_alt</mat-icon> Aplicar
         </button>
@@ -80,7 +81,7 @@ import { StockAdjustDialogComponent } from './stock-adjust-dialog.component';
 
     <!-- Tabla -->
     <mat-card>
-      <table mat-table [dataSource]="products()" class="full">
+      <table mat-table [dataSource]="filtered()" class="full">
         <ng-container matColumnDef="sku">
           <th mat-header-cell *matHeaderCellDef>SKU</th>
           <td mat-cell *matCellDef="let p"><code>{{ p.sku }}</code></td>
@@ -124,11 +125,8 @@ import { StockAdjustDialogComponent } from './stock-adjust-dialog.component';
         <ng-container matColumnDef="actions">
           <th mat-header-cell *matHeaderCellDef></th>
           <td mat-cell *matCellDef="let p">
-            <button mat-icon-button matTooltip="Ajustar stock" (click)="openAdjustDialog(p)">
-              <mat-icon>tune</mat-icon>
-            </button>
-            <button mat-icon-button matTooltip="Generar orden de compra" (click)="createOrder(p)">
-              <mat-icon>add_shopping_cart</mat-icon>
+            <button mat-icon-button matTooltip="Editar producto" (click)="openEditDialog(p)">
+              <mat-icon>edit</mat-icon>
             </button>
           </td>
         </ng-container>
@@ -137,14 +135,14 @@ import { StockAdjustDialogComponent } from './stock-adjust-dialog.component';
         <tr mat-row *matRowDef="let row; columns: columns" [class.row-low]="row.belowMinimum"></tr>
       </table>
 
-      @if (!products().length) { <p class="empty">Sin productos para los filtros aplicados.</p> }
+      @if (!filtered().length) { <p class="empty">Sin productos para los filtros aplicados.</p> }
     </mat-card>
   `,
   styles: [`
     .header { display: flex; justify-content: space-between; align-items: center; }
     .filters { margin-bottom: 16px; padding: 16px 16px 0; }
     .filter-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
-    .short { width: 130px; }
+    .wide { min-width: 320px; flex: 1 1 320px; }
     .full { width: 100%; }
     .chip-low { --mdc-chip-container-color: #ffebee; color: #c62828; }
     .chip-ok  { --mdc-chip-container-color: #e8f5e9; color: #2e7d32; }
@@ -155,10 +153,7 @@ import { StockAdjustDialogComponent } from './stock-adjust-dialog.component';
 })
 export class InventoryPageComponent implements OnInit {
   private readonly productService = inject(ProductService);
-  private readonly orderService = inject(OrderService);
-  private readonly alertService = inject(AlertService);
   private readonly dialog = inject(MatDialog);
-  private readonly snackBar = inject(MatSnackBar);
   private readonly fb = inject(FormBuilder);
 
   readonly columns = ['sku', 'name', 'category', 'price', 'currentStock', 'minimumStock', 'supplier', 'actions'];
@@ -166,11 +161,20 @@ export class InventoryPageComponent implements OnInit {
 
   readonly products = signal<Product[]>([]);
   readonly suppliers = signal<string[]>([]);
+  readonly productQuery = signal('');
 
-  readonly filterForm = this.fb.nonNullable.group({
-    category: '', supplier: '', minStock: null as number | null,
-    maxStock: null as number | null, activeAlert: false
+  /** Filtro de producto en cliente: coincide por SKU o por descripción. */
+  readonly filtered = computed(() => {
+    const q = this.productQuery().trim().toLowerCase();
+    const list = this.products();
+    if (!q) return list;
+    return list.filter((p) =>
+      p.sku.toLowerCase().includes(q) ||
+      p.name.toLowerCase().includes(q) ||
+      `${p.sku} - ${p.name}`.toLowerCase().includes(q));
   });
+
+  readonly filterForm = this.fb.nonNullable.group({ category: '', supplier: '' });
 
   ngOnInit(): void { this.load(); }
 
@@ -178,35 +182,29 @@ export class InventoryPageComponent implements OnInit {
     const f = this.filterForm.getRawValue();
     this.productService.list({
       category: f.category || undefined,
-      supplier: f.supplier || undefined,
-      minStock: f.minStock ?? undefined,
-      maxStock: f.maxStock ?? undefined,
-      activeAlert: f.activeAlert || undefined
+      supplier: f.supplier || undefined
     }).subscribe((products) => {
       this.products.set(products);
       this.suppliers.set([...new Set(products.map((p) => p.supplier))].sort());
     });
   }
 
-  clearFilters(): void { this.filterForm.reset(); this.load(); }
-
-  openProductDialog(): void {
-    this.dialog.open(ProductFormDialogComponent, { width: '520px' })
-      .afterClosed().subscribe((created) => { if (created) this.load(); });
+  clearFilters(): void {
+    this.filterForm.reset();
+    this.productQuery.set('');
+    this.load();
   }
 
-  openAdjustDialog(product: Product): void {
-    this.dialog.open(StockAdjustDialogComponent, { width: '460px', data: product })
-      .afterClosed().subscribe((adjusted) => { if (adjusted) this.load(); });
+  openCreateDialog(): void {
+    this.openDialog({ existingNames: this.products().map((p) => p.name) });
   }
 
-  createOrder(product: Product): void {
-    // Regla 2: precarga la cantidad mínima permitida (2x stock mínimo)
-    const quantity = product.minimumStock * 2;
-    this.orderService.create(product.id, quantity).subscribe({
-      next: () => this.snackBar.open(
-        `Orden creada: ${quantity} und. de ${product.name}`, 'OK', { duration: 4000 }),
-      error: (err) => this.snackBar.open(err.error?.message ?? 'Error al crear la orden', 'OK')
-    });
+  openEditDialog(product: Product): void {
+    this.openDialog({ product, existingNames: this.products().map((p) => p.name) });
+  }
+
+  private openDialog(data: ProductFormData): void {
+    this.dialog.open(ProductFormDialogComponent, { width: '520px', data })
+      .afterClosed().subscribe((changed) => { if (changed) this.load(); });
   }
 }
