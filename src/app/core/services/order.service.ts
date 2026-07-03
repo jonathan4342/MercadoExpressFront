@@ -14,19 +14,19 @@ export class OrderService {
     return this.http.get<PurchaseOrder[]>(this.base, { params });
   }
 
-  create(productId: string, quantity: number, alertId?: string): Observable<PurchaseOrder> {
-    return this.http.post<PurchaseOrder>(this.base, { productId, quantity, alertId });
+  create(productUid: string, quantity: number, alertUid?: string): Observable<PurchaseOrder> {
+    return this.http.post<PurchaseOrder>(this.base, { productUid, quantity, alertUid });
   }
 
-  approve(id: string): Observable<PurchaseOrder> {
-    return this.http.patch<PurchaseOrder>(`${this.base}/${id}/approve`, {});
+  approve(uid: string): Observable<PurchaseOrder> {
+    return this.http.patch<PurchaseOrder>(`${this.base}/${uid}/approve`, {});
   }
 
-  reject(id: string, reason: string): Observable<PurchaseOrder> {
-    return this.http.patch<PurchaseOrder>(`${this.base}/${id}/reject`, { reason });
+  reject(uid: string, reason: string): Observable<PurchaseOrder> {
+    return this.http.patch<PurchaseOrder>(`${this.base}/${uid}/reject`, { reason });
   }
 
-  receive(id: string): Observable<PurchaseOrder> {
-    return this.http.patch<PurchaseOrder>(`${this.base}/${id}/receive`, {});
+  receive(uid: string): Observable<PurchaseOrder> {
+    return this.http.patch<PurchaseOrder>(`${this.base}/${uid}/receive`, {});
   }
 }

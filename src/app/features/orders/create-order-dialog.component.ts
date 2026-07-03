@@ -29,8 +29,8 @@ import { ProductService } from '../../core/services/product.service';
         <mat-form-field appearance="outline" class="full">
           <mat-label>Producto (SKU - descripción)</mat-label>
           <mat-select formControlName="productId">
-            @for (p of products(); track p.id) {
-              <mat-option [value]="p.id"><code>{{ p.sku }}</code> — {{ p.name }}</mat-option>
+            @for (p of products(); track p.uid) {
+              <mat-option [value]="p.uid"><code>{{ p.sku }}</code> — {{ p.name }}</mat-option>
             }
           </mat-select>
           <mat-error>Selecciona un producto</mat-error>
@@ -83,7 +83,7 @@ export class CreateOrderDialogComponent implements OnInit {
   readonly selectedId = signal<string | null>(null);
 
   readonly selected = computed(() =>
-    this.products().find((p) => p.id === this.selectedId()) ?? null);
+    this.products().find((p) => p.uid === this.selectedId()) ?? null);
   readonly minQuantity = computed(() => {
     const p = this.selected();
     return p ? p.minimumStock * 2 : 0;

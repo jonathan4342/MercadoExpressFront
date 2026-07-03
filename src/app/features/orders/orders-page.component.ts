@@ -76,7 +76,7 @@ import { RejectOrderDialogComponent } from './reject-order-dialog.component';
       <table mat-table [dataSource]="filtered()" class="full">
         <ng-container matColumnDef="product">
           <th mat-header-cell *matHeaderCellDef>Producto</th>
-          <td mat-cell *matCellDef="let o">{{ productName(o.productId) }}</td>
+          <td mat-cell *matCellDef="let o">{{ productName(o.productUid) }}</td>
         </ng-container>
 
         <ng-container matColumnDef="supplier">
@@ -89,20 +89,20 @@ import { RejectOrderDialogComponent } from './reject-order-dialog.component';
           <td mat-cell *matCellDef="let o">{{ o.quantity }}</td>
         </ng-container>
 
-        <ng-container matColumnDef="origin">
-          <th mat-header-cell *matHeaderCellDef>Origen</th>
-          <td mat-cell *matCellDef="let o">
-            @if (o.alertId) { <mat-chip class="chip-alert"><mat-icon class="s">notifications</mat-icon> Alerta</mat-chip> }
-            @else { <mat-chip>Manual</mat-chip> }
-          </td>
-        </ng-container>
-
         <ng-container matColumnDef="status">
           <th mat-header-cell *matHeaderCellDef>Estado</th>
           <td mat-cell *matCellDef="let o">
             <mat-chip [class]="'chip-' + o.status.toLowerCase()">{{ o.status }}</mat-chip>
-            @if (o.rejectionReason) {
-              <div class="sub" [matTooltip]="o.rejectionReason">Motivo: {{ o.rejectionReason }}</div>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="motivo">
+          <th mat-header-cell *matHeaderCellDef>Motivo</th>
+          <td mat-cell *matCellDef="let o">
+            @if (o.status === 'RECHAZADA' && o.rejectionReason) {
+              <span class="reason" [matTooltip]="o.rejectionReason" #rt="matTooltip" (click)="rt.toggle()">
+                {{ o.rejectionReason }}
+              </span>
             }
           </td>
         </ng-container>
@@ -146,9 +146,7 @@ import { RejectOrderDialogComponent } from './reject-order-dialog.component';
     .filter-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
     .wide { min-width: 240px; flex: 1 1 240px; }
     .full { width: 100%; }
-    .sub { font-size: 12px; color: #888; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .s { font-size: 16px; height: 16px; width: 16px; }
-    .chip-alert     { --mdc-chip-container-color: #fff3e0; color: #e65100; }
+    .reason { display: inline-block; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; font-size: 13px; }
     .chip-pendiente { --mdc-chip-container-color: #fff8e1; color: #f57f17; }
     .chip-aprobada  { --mdc-chip-container-color: #e3f2fd; color: #1565c0; }
     .chip-rechazada { --mdc-chip-container-color: #ffebee; color: #c62828; }
@@ -163,7 +161,7 @@ export class OrdersPageComponent implements OnInit {
   private readonly snackBar = inject(MatSnackBar);
   private readonly fb = inject(FormBuilder);
 
-  readonly columns = ['product', 'supplier', 'quantity', 'origin', 'status', 'createdAt', 'actions'];
+  readonly columns = ['product', 'supplier', 'quantity', 'status', 'motivo', 'createdAt', 'actions'];
   readonly orders = signal<PurchaseOrder[]>([]);
   readonly suppliers = signal<string[]>([]);
   readonly statusFilter = signal<OrderStatus | undefined>(undefined);
@@ -177,7 +175,7 @@ export class OrdersPageComponent implements OnInit {
     const q = this.productQuery().trim().toLowerCase();
     const supplier = this.filterForm.getRawValue().supplier;
     return this.orders().filter((o) => {
-      const matchesProduct = !q || this.productName(o.productId).toLowerCase().includes(q);
+      const matchesProduct = !q || this.productName(o.productUid).toLowerCase().includes(q);
       const matchesSupplier = !supplier || o.supplier === supplier;
       return matchesProduct && matchesSupplier;
     });
@@ -202,7 +200,7 @@ export class OrdersPageComponent implements OnInit {
       orders: this.orderService.list(this.statusFilter()),
       products: this.productService.list()
     }).subscribe(({ orders, products }) => {
-      this.productsById = new Map(products.map((p) => [p.id, p]));
+      this.productsById = new Map(products.map((p) => [p.uid, p]));
       this.orders.set(orders);
       this.suppliers.set([...new Set(orders.map((o) => o.supplier))].sort());
     });
@@ -216,7 +214,7 @@ export class OrdersPageComponent implements OnInit {
   }
 
   approve(order: PurchaseOrder): void {
-    this.orderService.approve(order.id).subscribe({
+    this.orderService.approve(order.uid).subscribe({
       next: () => { this.snackBar.open('Orden aprobada', 'OK', { duration: 3000 }); this.load(); },
       error: (err) => this.snackBar.open(err.error?.message ?? 'Error', 'OK')
     });
@@ -226,7 +224,7 @@ export class OrdersPageComponent implements OnInit {
     this.dialog.open(RejectOrderDialogComponent, { width: '440px' })
       .afterClosed().subscribe((reason: string | undefined) => {
         if (!reason) return;
-        this.orderService.reject(order.id, reason).subscribe({
+        this.orderService.reject(order.uid, reason).subscribe({
           next: () => { this.snackBar.open('Orden rechazada', 'OK', { duration: 3000 }); this.load(); },
           error: (err) => this.snackBar.open(err.error?.message ?? 'Error', 'OK')
         });
@@ -234,7 +232,7 @@ export class OrdersPageComponent implements OnInit {
   }
 
   receive(order: PurchaseOrder): void {
-    this.orderService.receive(order.id).subscribe({
+    this.orderService.receive(order.uid).subscribe({
       next: () => { this.snackBar.open('Orden recibida: stock actualizado', 'OK', { duration: 4000 }); this.load(); },
       error: (err) => this.snackBar.open(err.error?.message ?? 'Error', 'OK')
     });

@@ -10,7 +10,7 @@ export interface CatalogItem {
 }
 
 export interface Product {
-  id: string;
+  uid: string;
   sku: string;
   name: string;
   categoryId: number;
@@ -33,8 +33,7 @@ export interface CreateProductPayload {
 }
 
 export interface InventoryMovement {
-  id: string;
-  productId: string;
+  uid: string;
   type: MovementType;
   quantity: number;
   reason: string;
@@ -43,8 +42,8 @@ export interface InventoryMovement {
 }
 
 export interface Alert {
-  id: string;
-  productId: string;
+  uid: string;
+  productUid: string;
   type: 'STOCK_BAJO';
   status: AlertStatus;
   createdAt: string;
@@ -52,10 +51,10 @@ export interface Alert {
 }
 
 export interface PurchaseOrder {
-  id: string;
-  productId: string;
+  uid: string;
+  productUid: string;
   supplier: string;
-  alertId: string | null;
+  alertId: number | null;
   quantity: number;
   status: OrderStatus;
   rejectionReason: string | null;

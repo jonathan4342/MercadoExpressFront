@@ -153,15 +153,15 @@ export class ProductFormDialogComponent implements OnInit {
     const v = this.form.getRawValue();
     const payload: CreateProductPayload = {
       name: v.name,
-      categoryId: v.categoryId!,
-      supplierId: v.supplierId!,
+      categoryId: +v.categoryId!,
+      supplierId: +v.supplierId!,
       price: v.price!,
       currentStock: v.currentStock,
       minimumStock: v.minimumStock!
     };
 
     const request$ = this.isEdit
-      ? this.productService.update(this.data.product!.id, payload)
+      ? this.productService.update(this.data.product!.uid, payload)
       : this.productService.create(payload);
 
     request$.subscribe({

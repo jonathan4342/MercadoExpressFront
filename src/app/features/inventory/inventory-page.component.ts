@@ -16,6 +16,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { Product } from '../../core/models/models';
 import { ProductService } from '../../core/services/product.service';
 import { ProductFormDialogComponent, ProductFormData } from './product-form-dialog.component';
+import { StockAdjustDialogComponent } from './stock-adjust-dialog.component';
 
 /** Inventario: filtros (producto, categoría, proveedor) + tabla con edición. */
 @Component({
@@ -42,7 +43,7 @@ import { ProductFormDialogComponent, ProductFormData } from './product-form-dial
                  (input)="productQuery.set($any($event.target).value)"
                  placeholder="Escribe un SKU o una descripción" />
           <mat-autocomplete #auto="matAutocomplete">
-            @for (p of filtered(); track p.id) {
+            @for (p of filtered(); track p.uid) {
               <mat-option [value]="p.sku + ' - ' + p.name"
                           (onSelectionChange)="productQuery.set(p.sku + ' - ' + p.name)">
                 <code>{{ p.sku }}</code> — {{ p.name }}
@@ -125,6 +126,9 @@ import { ProductFormDialogComponent, ProductFormData } from './product-form-dial
         <ng-container matColumnDef="actions">
           <th mat-header-cell *matHeaderCellDef></th>
           <td mat-cell *matCellDef="let p">
+            <button mat-icon-button matTooltip="Ajustar stock" (click)="openAdjustDialog(p)">
+              <mat-icon>swap_vert</mat-icon>
+            </button>
             <button mat-icon-button matTooltip="Editar producto" (click)="openEditDialog(p)">
               <mat-icon>edit</mat-icon>
             </button>
@@ -201,6 +205,12 @@ export class InventoryPageComponent implements OnInit {
 
   openEditDialog(product: Product): void {
     this.openDialog({ product, existingNames: this.products().map((p) => p.name) });
+  }
+
+  /** RF-02: abre el diálogo de ajuste de stock (entrada/salida + historial). */
+  openAdjustDialog(product: Product): void {
+    this.dialog.open(StockAdjustDialogComponent, { width: '520px', data: product })
+      .afterClosed().subscribe((changed) => { if (changed) this.load(); });
   }
 
   private openDialog(data: ProductFormData): void {

@@ -57,7 +57,7 @@ interface CategoryBar {
       <mat-card>
         <mat-card-header><mat-card-title>Stock bajo</mat-card-title></mat-card-header>
         <mat-card-content>
-          @for (p of lowStock(); track p.id) {
+          @for (p of lowStock(); track p.uid) {
             <div class="row">
               <span class="row-name">{{ p.name }}</span>
               <mat-chip class="chip-low">{{ p.currentStock }} / mín {{ p.minimumStock }}</mat-chip>

@@ -30,7 +30,7 @@ import { ProductService } from '../../core/services/product.service';
       <table mat-table [dataSource]="alerts()" class="full">
         <ng-container matColumnDef="descripcion">
           <th mat-header-cell *matHeaderCellDef>Descripción</th>
-          <td mat-cell *matCellDef="let a">{{ productName(a.productId) }}</td>
+          <td mat-cell *matCellDef="let a">{{ productName(a.productUid) }}</td>
         </ng-container>
 
         <ng-container matColumnDef="estado">
@@ -44,9 +44,9 @@ import { ProductService } from '../../core/services/product.service';
         <ng-container matColumnDef="stock">
           <th mat-header-cell *matHeaderCellDef>Stock</th>
           <td mat-cell *matCellDef="let a">
-            <mat-chip [class.chip-low]="isLow(a.productId)" [class.chip-ok]="!isLow(a.productId)">
-              {{ productStock(a.productId) }}
-              @if (isLow(a.productId)) { <mat-icon class="chip-icon">warning</mat-icon> }
+            <mat-chip [class.chip-low]="isLow(a.productUid)" [class.chip-ok]="!isLow(a.productUid)">
+              {{ productStock(a.productUid) }}
+              @if (isLow(a.productUid)) { <mat-icon class="chip-icon">warning</mat-icon> }
             </mat-chip>
           </td>
         </ng-container>
@@ -90,7 +90,7 @@ export class AlertsPageComponent implements OnInit {
       alerts: this.alertService.list(this.statusFilter()),
       products: this.productService.list()
     }).subscribe(({ alerts, products }) => {
-      this.productsById = new Map(products.map((p) => [p.id, p]));
+      this.productsById = new Map(products.map((p) => [p.uid, p]));
       this.alerts.set(alerts);
     });
   }
