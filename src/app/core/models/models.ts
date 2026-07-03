@@ -72,3 +72,9 @@ export interface InventoryFilters {
   maxStock?: number;
 }
 
+
+export interface AuthToken {
+  accessToken: string;
+  tokenType: 'Bearer';
+  expiresIn: number; // segundos
+}
