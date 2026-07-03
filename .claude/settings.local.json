@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node_modules/.bin/ng version *)",
+      "Bash(echo \"--- main.ts ---\")",
+      "Bash(cat 'C:\\\\Users\\\\osori\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-osori-OneDrive-Escritorio-prueba-inventario-completo-prueba-inventario-frontend\\\\a1095073-5a55-4489-bdc3-40c78413029c\\\\scratchpad\\\\workspace-gen\\\\mercadoexpress-front/src/main.ts')",
+      "Bash(echo \"--- index.html ---\")",
+      "Bash(cat 'C:\\\\Users\\\\osori\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-osori-OneDrive-Escritorio-prueba-inventario-completo-prueba-inventario-frontend\\\\a1095073-5a55-4489-bdc3-40c78413029c\\\\scratchpad\\\\workspace-gen\\\\mercadoexpress-front/src/index.html')",
+      "Bash(echo \"--- styles.scss ---\")",
+      "Bash(cp 'C:\\\\Users\\\\osori\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-osori-OneDrive-Escritorio-prueba-inventario-completo-prueba-inventario-frontend\\\\a1095073-5a55-4489-bdc3-40c78413029c\\\\scratchpad\\\\workspace-gen\\\\mercadoexpress-front/angular.json' 'c:\\\\Users\\\\osori\\\\OneDrive\\\\Escritorio\\\\prueba-inventario-completo\\\\prueba-inventario\\\\frontend/angular.json')",
+      "Bash(cp 'C:\\\\Users\\\\osori\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-osori-OneDrive-Escritorio-prueba-inventario-completo-prueba-inventario-frontend\\\\a1095073-5a55-4489-bdc3-40c78413029c\\\\scratchpad\\\\workspace-gen\\\\mercadoexpress-front/tsconfig.json' 'c:\\\\Users\\\\osori\\\\OneDrive\\\\Escritorio\\\\prueba-inventario-completo\\\\prueba-inventario\\\\frontend/tsconfig.json')",
+      "Bash(cp 'C:\\\\Users\\\\osori\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-osori-OneDrive-Escritorio-prueba-inventario-completo-prueba-inventario-frontend\\\\a1095073-5a55-4489-bdc3-40c78413029c\\\\scratchpad\\\\workspace-gen\\\\mercadoexpress-front/tsconfig.app.json' 'c:\\\\Users\\\\osori\\\\OneDrive\\\\Escritorio\\\\prueba-inventario-completo\\\\prueba-inventario\\\\frontend/tsconfig.app.json')",
+      "Bash(cp 'C:\\\\Users\\\\osori\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-osori-OneDrive-Escritorio-prueba-inventario-completo-prueba-inventario-frontend\\\\a1095073-5a55-4489-bdc3-40c78413029c\\\\scratchpad\\\\workspace-gen\\\\mercadoexpress-front/tsconfig.spec.json' 'c:\\\\Users\\\\osori\\\\OneDrive\\\\Escritorio\\\\prueba-inventario-completo\\\\prueba-inventario\\\\frontend/tsconfig.spec.json')",
+      "Bash(cp 'C:\\\\Users\\\\osori\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-osori-OneDrive-Escritorio-prueba-inventario-completo-prueba-inventario-frontend\\\\a1095073-5a55-4489-bdc3-40c78413029c\\\\scratchpad\\\\workspace-gen\\\\mercadoexpress-front/.editorconfig' 'c:\\\\Users\\\\osori\\\\OneDrive\\\\Escritorio\\\\prueba-inventario-completo\\\\prueba-inventario\\\\frontend/.editorconfig')"
+    ]
+  }
+}
