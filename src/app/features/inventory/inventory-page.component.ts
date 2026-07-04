@@ -13,12 +13,13 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { Product } from '../../core/models/models';
+import { CatalogItem, Product } from '../../core/models/models';
+import { CatalogService } from '../../core/services/catalog.service';
 import { ProductService } from '../../core/services/product.service';
 import { ProductFormDialogComponent, ProductFormData } from './product-form-dialog.component';
 import { StockAdjustDialogComponent } from './stock-adjust-dialog.component';
 
-/** Inventario: filtros (producto, categoría, proveedor) + tabla con edición. */
+/** Inventario: filtros (producto, categoría, proveedor, alerta, rango de stock) + tabla con edición. */
 @Component({
   selector: 'app-inventory-page',
   standalone: true,
@@ -33,7 +34,7 @@ import { StockAdjustDialogComponent } from './stock-adjust-dialog.component';
       </button>
     </div>
 
-    <!-- Filtros (RF-06): Producto, Categoría, Proveedor -->
+    <!-- Filtros (RF-06): Producto, Categoría, Proveedor, Estado de alerta, Rango de stock -->
     <mat-card class="filters">
       <form [formGroup]="filterForm" class="filter-row">
         <mat-form-field appearance="outline" class="wide">
@@ -61,7 +62,7 @@ import { StockAdjustDialogComponent } from './stock-adjust-dialog.component';
           <mat-label>Categoría</mat-label>
           <mat-select formControlName="category">
             <mat-option [value]="''">Todas</mat-option>
-            @for (c of categories; track c) { <mat-option [value]="c">{{ c }}</mat-option> }
+            @for (c of categories(); track c.id) { <mat-option [value]="c.name">{{ c.name }}</mat-option> }
           </mat-select>
         </mat-form-field>
 
@@ -69,8 +70,26 @@ import { StockAdjustDialogComponent } from './stock-adjust-dialog.component';
           <mat-label>Proveedor</mat-label>
           <mat-select formControlName="supplier">
             <mat-option [value]="''">Todos</mat-option>
-            @for (s of suppliers(); track s) { <mat-option [value]="s">{{ s }}</mat-option> }
+            @for (s of suppliers(); track s.id) { <mat-option [value]="s.name">{{ s.name }}</mat-option> }
           </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Estado de alerta</mat-label>
+          <mat-select formControlName="activeAlert">
+            <mat-option [value]="false">Todos</mat-option>
+            <mat-option [value]="true">Con alerta activa</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="stock-range">
+          <mat-label>Stock mínimo</mat-label>
+          <input matInput type="number" min="0" formControlName="minStock" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="stock-range">
+          <mat-label>Stock máximo</mat-label>
+          <input matInput type="number" min="0" formControlName="maxStock" />
         </mat-form-field>
 
         <button mat-stroked-button type="button" (click)="load()">
@@ -147,6 +166,7 @@ import { StockAdjustDialogComponent } from './stock-adjust-dialog.component';
     .filters { margin-bottom: 16px; padding: 16px 16px 0; }
     .filter-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
     .wide { min-width: 320px; flex: 1 1 320px; }
+    .stock-range { width: 140px; }
     .full { width: 100%; }
     .chip-low { --mdc-chip-container-color: #ffebee; color: #c62828; }
     .chip-ok  { --mdc-chip-container-color: #e8f5e9; color: #2e7d32; }
@@ -157,14 +177,15 @@ import { StockAdjustDialogComponent } from './stock-adjust-dialog.component';
 })
 export class InventoryPageComponent implements OnInit {
   private readonly productService = inject(ProductService);
+  private readonly catalogService = inject(CatalogService);
   private readonly dialog = inject(MatDialog);
   private readonly fb = inject(FormBuilder);
 
   readonly columns = ['sku', 'name', 'category', 'price', 'currentStock', 'minimumStock', 'supplier', 'actions'];
-  readonly categories = ['Bebidas', 'Lácteos', 'Snacks', 'Limpieza', 'Frutas', 'Granos'];
 
   readonly products = signal<Product[]>([]);
-  readonly suppliers = signal<string[]>([]);
+  readonly categories = signal<CatalogItem[]>([]);
+  readonly suppliers = signal<CatalogItem[]>([]);
   readonly productQuery = signal('');
 
   /** Filtro de producto en cliente: coincide por SKU o por descripción. */
@@ -178,19 +199,29 @@ export class InventoryPageComponent implements OnInit {
       `${p.sku} - ${p.name}`.toLowerCase().includes(q));
   });
 
-  readonly filterForm = this.fb.nonNullable.group({ category: '', supplier: '' });
+  readonly filterForm = this.fb.nonNullable.group({
+    category: '',
+    supplier: '',
+    activeAlert: false,
+    minStock: null as number | null,
+    maxStock: null as number | null
+  });
 
-  ngOnInit(): void { this.load(); }
+  ngOnInit(): void {
+    this.catalogService.categories().subscribe((categories) => this.categories.set(categories));
+    this.catalogService.suppliers().subscribe((suppliers) => this.suppliers.set(suppliers));
+    this.load();
+  }
 
   load(): void {
     const f = this.filterForm.getRawValue();
     this.productService.list({
       category: f.category || undefined,
-      supplier: f.supplier || undefined
-    }).subscribe((products) => {
-      this.products.set(products);
-      this.suppliers.set([...new Set(products.map((p) => p.supplier))].sort());
-    });
+      supplier: f.supplier || undefined,
+      activeAlert: f.activeAlert || undefined,
+      minStock: f.minStock ?? undefined,
+      maxStock: f.maxStock ?? undefined
+    }).subscribe((products) => this.products.set(products));
   }
 
   clearFilters(): void {

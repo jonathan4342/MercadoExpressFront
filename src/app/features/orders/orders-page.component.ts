@@ -115,7 +115,6 @@ import { RejectOrderDialogComponent } from './reject-order-dialog.component';
         <ng-container matColumnDef="actions">
           <th mat-header-cell *matHeaderCellDef></th>
           <td mat-cell *matCellDef="let o">
-            <!-- Regla 5: solo transiciones válidas -->
             @if (o.status === 'PENDIENTE') {
               <button mat-icon-button color="primary" matTooltip="Aprobar" (click)="approve(o)">
                 <mat-icon>check_circle</mat-icon>

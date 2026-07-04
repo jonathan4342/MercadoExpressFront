@@ -53,7 +53,7 @@ import { ProductService } from '../../core/services/product.service';
             <mat-error>Ingresa una cantidad válida</mat-error>
           }
           @if (minQuantity() > 0) {
-            <mat-hint>Regla 2: mínimo {{ minQuantity() }} unidades (2x stock mínimo)</mat-hint>
+            <mat-hint>Mínimo {{ minQuantity() }} unidades (2x stock mínimo)</mat-hint>
           }
         </mat-form-field>
       </mat-dialog-content>
